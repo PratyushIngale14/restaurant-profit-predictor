@@ -12,7 +12,6 @@ from flask import Flask, render_template, request, jsonify
 import joblib
 import os
 
-# Load raw data
 df = pd.read_csv("restaurant_raw_data.csv")
 
 # ------------------------------
@@ -62,7 +61,6 @@ print("R^2 Score:", r2_score(y_test, y_pred))
 forecast_df = df.groupby(['Year', 'Month'])[['Total_Sales']].sum().reset_index()
 forecast_df['ds'] = pd.to_datetime(forecast_df[['Year', 'Month']].assign(DAY=1))
 forecast_df = forecast_df.rename(columns={'Total_Sales': 'y'})[['ds', 'y']]
-
 prophet_model = Prophet()
 prophet_model.fit(forecast_df)
 future = prophet_model.make_future_dataframe(periods=36, freq='MS')
@@ -99,3 +97,12 @@ def forecast_view():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+@app.route('/forecast-page')
+def forecast_page():
+    return render_template('forecast.html')
+
+@app.route('/forecast-data')
+def forecast_data():
+    forecast_df = pd.read_csv("sales_forecast.csv").tail(36)
+    return forecast_df.to_json(orient='records')
