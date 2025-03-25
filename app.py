@@ -1,8 +1,9 @@
-# restaurant_profit_prediction_with_forecast_and_dashboard.py
+# restaurant_profit_pipeline.py
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
@@ -11,66 +12,66 @@ from flask import Flask, render_template, request, jsonify
 import joblib
 import os
 
-# Load dataset
-df = pd.read_csv("restaurant_financial_data.csv")
+# Load raw data
+df = pd.read_csv("restaurant_raw_data.csv")
 
-# Feature selection for profit prediction
+# ------------------------------
+# Step 1: EDA & Data Cleaning
+# ------------------------------
+
+# Remove duplicates
+df.drop_duplicates(inplace=True)
+
+# Handle invalid and missing values
+df = df[df['Total_Sales'] > 0]
+df = df[df['Utilities'] > 0]
+df = df[df['Rent'] < 40000]  # Remove extreme rent outliers
+df = df[df['Staff_Cost'] < 150000]  # Remove staff cost outliers
+
+# Fill missing marketing costs with median
+df['Marketing_Cost'].fillna(df['Marketing_Cost'].median(), inplace=True)
+
+# Recalculate total expenses and profit
+df['Total_Expenses'] = df['Marketing_Cost'] + df['Rent'] + df['Staff_Cost'] + df['Utilities']
+df['Profit'] = df['Total_Sales'] - df['Total_Expenses']
+
+# Save cleaned data
+df.to_csv("cleaned_data.csv", index=False)
+
+# ------------------------------
+# Step 2: Profit Prediction Model
+# ------------------------------
 features = ['Total_Sales', 'Marketing_Cost', 'Rent', 'Staff_Cost', 'Utilities']
 X = df[features]
 y = df['Profit']
 
-# Split dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize and train the Linear Regression model
 model = LinearRegression()
 model.fit(X_train, y_train)
-
-# Save model for Flask app
 joblib.dump(model, 'profit_model.pkl')
 
-# Predict on test data
+# Evaluate model
 y_pred = model.predict(X_test)
+print("MSE:", mean_squared_error(y_test, y_pred))
+print("R^2 Score:", r2_score(y_test, y_pred))
 
-# Evaluate the model
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-print("Model Evaluation:")
-print(f"Mean Squared Error: {mse:.2f}")
-print(f"R^2 Score: {r2:.2f}")
-
-# Plot Actual vs Predicted Profit
-plt.figure(figsize=(10, 6))
-plt.scatter(y_test, y_pred, alpha=0.5, color='blue')
-plt.xlabel("Actual Profit")
-plt.ylabel("Predicted Profit")
-plt.title("Actual vs Predicted Profit")
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("actual_vs_predicted_profit.png")
-plt.close()
-
-# Save the model coefficients
-coefficients = pd.DataFrame({
-    'Feature': features,
-    'Coefficient': model.coef_
-})
-print("\nModel Coefficients:")
-print(coefficients)
-
-# Prophet forecasting setup
+# ------------------------------
+# Step 3: Sales Forecasting with Prophet
+# ------------------------------
 forecast_df = df.groupby(['Year', 'Month'])[['Total_Sales']].sum().reset_index()
 forecast_df['ds'] = pd.to_datetime(forecast_df[['Year', 'Month']].assign(DAY=1))
 forecast_df = forecast_df.rename(columns={'Total_Sales': 'y'})[['ds', 'y']]
 
 prophet_model = Prophet()
 prophet_model.fit(forecast_df)
-
 future = prophet_model.make_future_dataframe(periods=36, freq='MS')
 forecast = prophet_model.predict(future)
 forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].to_csv("sales_forecast.csv", index=False)
 
-# Flask app setup
+# ------------------------------
+# Step 4: Flask Web App
+# ------------------------------
 app = Flask(__name__)
 
 @app.route('/')

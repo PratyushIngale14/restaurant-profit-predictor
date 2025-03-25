@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurant Profit Predictor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1f2937, #111827);
+            color: #f9fafb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            background-color: #1e293b;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #e2e8f0;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #374151;
+            color: #f9fafb;
+            font-size: 16px;
+        }
+        
+        input::placeholder {
+            color: #9ca3af;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #f9fafb;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        
+        #result {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #34d399;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Restaurant Profit Predictor</h1>
+        <form id="predict-form">
+            <input name="Total_Sales" placeholder="Total Sales" required type="number" step="any">
+            <input name="Marketing_Cost" placeholder="Marketing Cost" required type="number" step="any">
+            <input name="Rent" placeholder="Rent" required type="number" step="any">
+            <input name="Staff_Cost" placeholder="Staff Cost" required type="number" step="any">
+            <input name="Utilities" placeholder="Utilities" required type="number" step="any">
+            <button type="submit">Predict Profit</button>
+        </form>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        document.getElementById("predict-form").onsubmit = async(e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                Total_Sales: parseFloat(form.Total_Sales.value),
+                Marketing_Cost: parseFloat(form.Marketing_Cost.value),
+                Rent: parseFloat(form.Rent.value),
+                Staff_Cost: parseFloat(form.Staff_Cost.value),
+                Utilities: parseFloat(form.Utilities.value)
+            };
+
+            const res = await fetch("/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await res.json();
+            document.getElementById("result").textContent = `Predicted Profit: $${result.predicted_profit}`;
+        };
+    </script>
+</body>
+
+</html>
